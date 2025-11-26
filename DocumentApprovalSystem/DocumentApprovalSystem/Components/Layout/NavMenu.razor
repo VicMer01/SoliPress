@@ -55,6 +55,11 @@
                         <i class="bi bi-people"></i> Usuarios
                     </NavLink>
                 </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="admin/approval-config">
+                        <i class="bi bi-gear"></i> Configuración
+                    </NavLink>
+                </li>
             </Authorized>
         </AuthorizeView>
 
@@ -101,6 +106,7 @@
     {
         if (user.IsInRole("Administrador")) return "Administrador";
         if (user.IsInRole("Solicitante")) return "Solicitante";
+        if (user.IsInRole("Aprobador")) return "Aprobador";
         return "Usuario";
     }
 }

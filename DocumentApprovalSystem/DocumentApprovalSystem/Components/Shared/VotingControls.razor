@@ -1,0 +1,150 @@
+@using DocumentApprovalSystem.Models
+@using DocumentApprovalSystem.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IApprovalService ApprovalService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+@if (canVote)
+{
+    <div class="card mt-3">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Emitir Voto</h5>
+        </div>
+        <div class="card-body">
+            @if (hasVoted)
+            {
+                <div class="alert alert-info">
+                    Ya has emitido tu voto para esta solicitud.
+                </div>
+            }
+            else
+            {
+                <p>Por favor, revise la solicitud y emita su voto.</p>
+                
+                <div class="mb-3">
+                    <label class="form-label">Comentarios @(config?.CommentsRequired == true ? "(Obligatorio)" : "(Opcional)")</label>
+                    <textarea class="form-control" rows="3" @bind="voteComments" placeholder="Agregue sus comentarios sobre la decisión..."></textarea>
+                    @if (showValidationError)
+                    {
+                        <div class="text-danger small mt-1">Los comentarios son obligatorios.</div>
+                    }
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" @onclick="() => Vote(VoteDecision.Approve)">
+                        <i class="bi bi-check-circle"></i> Aprobar
+                    </button>
+                    <button class="btn btn-danger" @onclick="() => Vote(VoteDecision.Reject)">
+                        <i class="bi bi-x-circle"></i> Rechazar
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0">Estado de Votación</h5>
+    </div>
+    <div class="card-body">
+        @if (votes == null || !votes.Any())
+        {
+            <p class="text-muted">No hay votos registrados aún.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var vote in votes)
+                {
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <strong>@vote.User?.FullName</strong> (@vote.User?.Email)
+                                <br />
+                                <small class="text-muted">@vote.VoteDate.ToLocalTime().ToString("g")</small>
+                                @if (!string.IsNullOrEmpty(vote.Comments))
+                                {
+                                    <div class="mt-2 p-2 bg-light rounded small">
+                                        <i class="bi bi-chat-text me-1"></i> @vote.Comments
+                                    </div>
+                                }
+                            </div>
+                            <span class="badge @(vote.Decision == VoteDecision.Approve ? "bg-success" : "bg-danger") rounded-pill">
+                                @vote.Decision
+                            </span>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int RequestId { get; set; }
+
+    [Parameter]
+    public EventCallback OnVoteCast { get; set; }
+
+    private List<ApprovalVote> votes = new();
+    private bool canVote = false;
+    private bool hasVoted = false;
+    private string currentUserId = "";
+    private string voteComments = "";
+    private bool showValidationError = false;
+    private ApprovalConfig? config;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            // Assuming we can get ID from claims, or we might need to look it up
+            // IdentityUserAccessor might be needed if ID is not in standard claims
+            // But usually sub or nameidentifier is there.
+            var userIdClaim = user.FindFirst(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                currentUserId = userIdClaim.Value;
+                if (user.IsInRole("Aprobador") || user.IsInRole("Administrador"))
+                {
+                    canVote = true;
+                    hasVoted = await ApprovalService.HasUserVotedAsync(RequestId, currentUserId);
+                }
+            }
+        }
+
+        votes = await ApprovalService.GetVotesForRequestAsync(RequestId);
+        config = await ApprovalService.GetConfigAsync();
+    }
+
+    private async Task Vote(VoteDecision decision)
+    {
+        showValidationError = false;
+        
+        // Validate comments if required
+        if (config?.CommentsRequired == true && string.IsNullOrWhiteSpace(voteComments))
+        {
+            showValidationError = true;
+            return;
+        }
+        
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            await ApprovalService.VoteAsync(RequestId, currentUserId, decision, voteComments);
+            voteComments = ""; // Clear comments after voting
+            await LoadData();
+            await OnVoteCast.InvokeAsync();
+        }
+    }
+}

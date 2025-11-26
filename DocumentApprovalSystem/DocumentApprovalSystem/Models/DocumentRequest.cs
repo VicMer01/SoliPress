@@ -34,5 +34,6 @@ namespace DocumentApprovalSystem.Models
 
         // Histories navigation
         public ICollection<DocumentHistory> Histories { get; set; } = new List<DocumentHistory>();
+        public ICollection<ApprovalVote> Votes { get; set; } = new List<ApprovalVote>();
     }
 }

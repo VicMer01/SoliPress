@@ -7,7 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<UploadDocument> Logger
-@attribute [Authorize(Roles = "Administrador,Solicitante")]
+@attribute [Authorize(Roles = "Administrador,Solicitante,Aprobador")]
 @rendermode InteractiveServer
 
 <PageTitle>Nueva Solicitud | Sistema de Aprobación</PageTitle>

@@ -6,7 +6,7 @@
 @inject IDocumentService DocumentService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@attribute [Authorize(Roles = "Administrador,Solicitante")]
+@attribute [Authorize(Roles = "Administrador,Solicitante,Aprobador")]
 @rendermode InteractiveServer
 
 <PageTitle>Detalles del Documento | Sistema de Aprobación</PageTitle>
@@ -147,9 +147,13 @@ else
 
         <!-- Sidebar Actions -->
         <div class="col-12 col-lg-4">
-            <div class="card border-0 shadow-sm mb-4">
+            
+            <!-- Voting Controls -->
+            <DocumentApprovalSystem.Components.Shared.VotingControls RequestId="@Id" OnVoteCast="RefreshDocument" />
+
+            <div class="card border-0 shadow-sm mb-4 mt-4">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0">Acciones</h5>
+                    <h5 class="mb-0">Acciones Administrativas</h5>
                 </div>
                 <div class="card-body">
                     <AuthorizeView Roles="Administrador">
@@ -158,10 +162,10 @@ else
                             {
                                 <div class="d-grid gap-2">
                                     <button class="btn btn-success" @onclick="() => ShowApprovalModal(true)">
-                                        <i class="bi bi-check-circle me-2"></i> Aprobar Solicitud
+                                        <i class="bi bi-check-circle me-2"></i> Forzar Aprobación
                                     </button>
                                     <button class="btn btn-danger" @onclick="() => ShowApprovalModal(false)">
-                                        <i class="bi bi-x-circle me-2"></i> Rechazar Solicitud
+                                        <i class="bi bi-x-circle me-2"></i> Forzar Rechazo
                                     </button>
                                 </div>
                             }
@@ -169,14 +173,14 @@ else
                             {
                                 <div class="alert alert-light text-center mb-0 border">
                                     <i class="bi bi-lock me-2"></i>
-                                    Esta solicitud está <strong>@GetStatusLabel(document.Status).ToLower()</strong> y no puede ser modificada.
+                                    Esta solicitud está <strong>@GetStatusLabel(document.Status).ToLower()</strong>.
                                 </div>
                             }
                         </Authorized>
                         <NotAuthorized>
                             <div class="alert alert-info text-center mb-0">
                                 <i class="bi bi-info-circle me-2"></i>
-                                Solo los administradores pueden aprobar o rechazar solicitudes.
+                                Acciones reservadas para administradores.
                             </div>
                         </NotAuthorized>
                     </AuthorizeView>
@@ -311,6 +315,12 @@ else
         }
 
         isModalVisible = false;
+        StateHasChanged();
+    }
+
+    private async Task RefreshDocument()
+    {
+        document = await DocumentService.GetDocumentByIdAsync(Id);
         StateHasChanged();
     }
 }

@@ -14,6 +14,8 @@ public class ApplicationDbContext : IdentityDbContext<User>
 
     public DbSet<DocumentRequest> DocumentRequests { get; set; }
     public DbSet<DocumentHistory> DocumentHistories { get; set; }
+    public DbSet<ApprovalVote> ApprovalVotes { get; set; }
+    public DbSet<ApprovalConfig> ApprovalConfigs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -36,29 +38,40 @@ public class ApplicationDbContext : IdentityDbContext<User>
         // Avoid multiple cascade paths
         // ------------------------------------------
 
-      builder.Entity<DocumentHistory>()
-    .HasOne(h => h.DocumentRequest)
-    .WithMany(r => r.Histories)
-    .HasForeignKey(h => h.DocumentRequestId)
-    .OnDelete(DeleteBehavior.NoAction); // más seguro que Restrict para SQL Server
+        builder.Entity<DocumentHistory>()
+            .HasOne(h => h.DocumentRequest)
+            .WithMany(r => r.Histories)
+            .HasForeignKey(h => h.DocumentRequestId)
+            .OnDelete(DeleteBehavior.NoAction); // más seguro que Restrict para SQL Server
 
-builder.Entity<DocumentHistory>()
-    .HasOne(h => h.User)
-    .WithMany(u => u.DocumentHistories)
-    .HasForeignKey(h => h.UserId)
-    .OnDelete(DeleteBehavior.NoAction);
+        builder.Entity<DocumentHistory>()
+            .HasOne(h => h.User)
+            .WithMany(u => u.DocumentHistories)
+            .HasForeignKey(h => h.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
 
-builder.Entity<DocumentRequest>()
-    .HasOne(r => r.RequestedByUser)
-    .WithMany(u => u.RequestedDocumentRequests)
-    .HasForeignKey(r => r.RequestedByUserId)
-    .OnDelete(DeleteBehavior.NoAction);
+        builder.Entity<DocumentRequest>()
+            .HasOne(r => r.RequestedByUser)
+            .WithMany(u => u.RequestedDocumentRequests)
+            .HasForeignKey(r => r.RequestedByUserId)
+            .OnDelete(DeleteBehavior.NoAction);
 
-builder.Entity<DocumentRequest>()
-    .HasOne(r => r.ApprovedByUser)
-    .WithMany(u => u.ApprovedDocumentRequests)
-    .HasForeignKey(r => r.ApprovedByUserId)
-    .OnDelete(DeleteBehavior.NoAction);
+        builder.Entity<DocumentRequest>()
+            .HasOne(r => r.ApprovedByUser)
+            .WithMany(u => u.ApprovedDocumentRequests)
+            .HasForeignKey(r => r.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.NoAction);
 
+        builder.Entity<ApprovalVote>()
+            .HasOne(v => v.DocumentRequest)
+            .WithMany(r => r.Votes)
+            .HasForeignKey(v => v.DocumentRequestId)
+            .OnDelete(DeleteBehavior.Cascade); // Votes should be deleted if request is deleted
+
+        builder.Entity<ApprovalVote>()
+            .HasOne(v => v.User)
+            .WithMany() // No need for collection in User for now, or we can add it
+            .HasForeignKey(v => v.UserId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

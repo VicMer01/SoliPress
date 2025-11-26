@@ -44,6 +44,7 @@ builder.Services.AddIdentityCore<User>(options => options.SignIn.RequireConfirme
 
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IApprovalService, ApprovalService>();
 
 builder.Services.AddSingleton<IEmailSender<User>, IdentityNoOpEmailSender>();
 
