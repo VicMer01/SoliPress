@@ -1,0 +1,239 @@
+@page "/users"
+@using Microsoft.AspNetCore.Authorization
+@using DocumentApprovalSystem.Services
+@using DocumentApprovalSystem.Models.ViewModels
+@inject IUserManagementService UserManagementService
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+
+<PageTitle>Gestión de Usuarios | Sistema de Aprobación</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Gestión de Usuarios</h2>
+        <p class="text-muted mb-0">Administra usuarios, roles y permisos del sistema.</p>
+    </div>
+    <a href="/users/create" class="btn btn-primary">
+        <i class="bi bi-person-plus me-2"></i> Agregar Usuario
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar por nombre o email..." @bind="searchTerm" @bind:event="oninput" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="roleFilter">
+                    <option value="">Todos los Roles</option>
+                    @foreach (var role in availableRoles)
+                    {
+                        <option value="@role">@role</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="statusFilter">
+                    <option value="">Todos los Estados</option>
+                    <option value="active">Activos</option>
+                    <option value="inactive">Inactivos</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive table-responsive-stack">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Departamento</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (filteredUsers == null)
+                    {
+                        <tr><td colspan="5" class="text-center py-5"><LoadingSpinner /></td></tr>
+                    }
+                    else if (!filteredUsers.Any())
+                    {
+                        <tr><td colspan="5" class="text-center py-5 text-muted">No se encontraron usuarios.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var user in filteredUsers)
+                        {
+                            <tr>
+                                <td data-label="Usuario">
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar bg-light text-primary me-3">
+                                            @(!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0,1).ToUpper() : "?")
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">@user.FullName</div>
+                                            <small class="text-muted">@user.Email</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td data-label="Rol">
+                                    <span class="badge @GetRoleBadgeClass(user.PrimaryRole)">@user.PrimaryRole</span>
+                                </td>
+                                <td data-label="Departamento">
+                                    @(user.Department ?? "-")
+                                </td>
+                                <td data-label="Estado">
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="text-success small"><i class="bi bi-check-circle-fill me-1"></i> Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger small"><i class="bi bi-x-circle-fill me-1"></i> Inactivo</span>
+                                    }
+                                    @if (!user.EmailConfirmed)
+                                    {
+                                        <br/><span class="text-warning small"><i class="bi bi-exclamation-circle-fill me-1"></i> Email no verificado</span>
+                                    }
+                                </td>
+                                <td data-label="Acciones" class="text-md-end">
+                                    <div class="btn-group">
+                                        <a href="/users/edit/@user.Id" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")" 
+                                                title="@(user.IsActive ? "Desactivar" : "Activar")"
+                                                @onclick="() => ToggleUserStatus(user.Id, user.FullName)">
+                                            <i class="bi bi-@(user.IsActive ? "lock" : "unlock")"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" title="Eliminar" @onclick="() => ShowDeleteConfirm(user.Id, user.FullName)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (filteredUsers != null && filteredUsers.Any())
+{
+    <div class="mt-3 text-muted small">
+        Mostrando @filteredUsers.Count de @allUsers?.Count usuarios
+    </div>
+}
+
+<ConfirmDialog @bind-IsVisible="showDeleteDialog"
+               Title="Eliminar Usuario"
+               Message="@deleteMessage"
+               Icon="exclamation-triangle"
+               ConfirmText="Eliminar"
+               ConfirmButtonClass="btn-danger"
+               HeaderClass="bg-danger text-white"
+               OnConfirm="DeleteUser" />
+
+@code {
+    private List<UserWithRolesViewModel>? allUsers;
+    private List<string> availableRoles = new();
+    private string searchTerm = "";
+    private string roleFilter = "";
+    private string statusFilter = "";
+    
+    private bool showDeleteDialog = false;
+    private string userToDelete = "";
+    private string deleteMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        allUsers = await UserManagementService.GetAllUsersWithRolesAsync();
+        availableRoles = await UserManagementService.GetAllRolesAsync();
+    }
+
+    private List<UserWithRolesViewModel>? filteredUsers
+    {
+        get
+        {
+            if (allUsers == null) return null;
+
+            var query = allUsers.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(u =>
+                    u.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(roleFilter))
+            {
+                query = query.Where(u => u.Roles.Contains(roleFilter));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                if (statusFilter == "active")
+                    query = query.Where(u => u.IsActive);
+                else if (statusFilter == "inactive")
+                    query = query.Where(u => !u.IsActive);
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private string GetRoleBadgeClass(string role) => role switch
+    {
+        "Administrador" => "bg-danger text-white",
+        "Solicitante" => "bg-primary text-white",
+        _ => "bg-secondary text-white"
+    };
+
+    private async Task ToggleUserStatus(string userId, string userName)
+    {
+        var result = await UserManagementService.ToggleUserStatusAsync(userId);
+        if (result.Success)
+        {
+            await LoadData();
+        }
+    }
+
+    private void ShowDeleteConfirm(string userId, string userName)
+    {
+        userToDelete = userId;
+        deleteMessage = $"¿Está seguro de que desea eliminar al usuario '{userName}'? Esta acción no se puede deshacer.";
+        showDeleteDialog = true;
+    }
+
+    private async Task DeleteUser()
+    {
+        if (!string.IsNullOrEmpty(userToDelete))
+        {
+            var result = await UserManagementService.DeleteUserAsync(userToDelete);
+            if (result.Success)
+            {
+                await LoadData();
+            }
+            userToDelete = "";
+        }
+    }
+}

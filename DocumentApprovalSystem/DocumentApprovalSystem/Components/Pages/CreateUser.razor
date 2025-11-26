@@ -1,0 +1,220 @@
+@page "/users/create"
+@using Microsoft.AspNetCore.Authorization
+@using DocumentApprovalSystem.Services
+@using DocumentApprovalSystem.Models.ViewModels
+@inject IUserManagementService UserManagementService
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+
+<PageTitle>Crear Usuario | Sistema de Aprobación</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Crear Nuevo Usuario</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="/users" class="text-decoration-none">Usuarios</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Crear</li>
+            </ol>
+        </nav>
+    </div>
+    <a href="/users" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i> Volver
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @errorMessage
+                            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                        </div>
+                    }
+
+                    @if (successMessage)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Usuario creado exitosamente
+                            <button type="button" class="btn-close" @onclick="() => successMessage = false"></button>
+                        </div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre Completo <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="model.FullName" placeholder="Ej: Juan Pérez" />
+                            <ValidationMessage For="@(() => model.FullName)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <InputText type="email" class="form-control" @bind-Value="model.Email" placeholder="usuario@ejemplo.com" />
+                            <ValidationMessage For="@(() => model.Email)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Departamento</label>
+                            <InputText class="form-control" @bind-Value="model.Department" placeholder="Ej: Recursos Humanos" />
+                            <ValidationMessage For="@(() => model.Department)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Rol <span class="text-danger">*</span></label>
+                            <InputSelect class="form-select" @bind-Value="model.Role">
+                                <option value="">Seleccione un rol</option>
+                                @foreach (var role in availableRoles)
+                                {
+                                    <option value="@role">@role</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => model.Role)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Contraseña <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <InputText type="@(showPassword ? "text" : "password")" class="form-control" @bind-Value="model.Password" />
+                                <button type="button" class="btn btn-outline-secondary" @onclick="TogglePasswordVisibility">
+                                    <i class="bi bi-@(showPassword ? "eye-slash" : "eye")"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" @onclick="GeneratePassword">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">Mínimo 6 caracteres. Click en <i class="bi bi-key"></i> para generar automáticamente.</small>
+                            <ValidationMessage For="@(() => model.Password)" class="text-danger small d-block" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Confirmar Contraseña <span class="text-danger">*</span></label>
+                            <InputText type="@(showPassword ? "text" : "password")" class="form-control" @bind-Value="model.ConfirmPassword" />
+                            <ValidationMessage For="@(() => model.ConfirmPassword)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" @bind-Value="model.EmailConfirmed" id="emailConfirmed" />
+                                <label class="form-check-label" for="emailConfirmed">
+                                    Marcar email como verificado
+                                </label>
+                                <small class="text-muted d-block">Si está marcado, el usuario no necesitará verificar su email.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-lg me-2"></i>
+                            }
+                            Crear Usuario
+                        </button>
+                        <a href="/users" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-3"><i class="bi bi-info-circle me-2"></i>Información</h5>
+                <div class="small">
+                    <p><strong>Roles disponibles:</strong></p>
+                    <ul class="mb-3">
+                        <li><strong>Administrador:</strong> Acceso completo al sistema, puede gestionar usuarios y aprobar documentos.</li>
+                        <li><strong>Solicitante:</strong> Puede crear y ver sus propias solicitudes de documentos.</li>
+                    </ul>
+                    
+                    <p><strong>Requisitos de contraseña:</strong></p>
+                    <ul class="mb-0">
+                        <li>Mínimo 6 caracteres</li>
+                        <li>Se recomienda incluir mayúsculas, minúsculas y números</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateUserViewModel model = new();
+    private List<string> availableRoles = new();
+    private bool isSubmitting = false;
+    private bool showPassword = false;
+    private string errorMessage = string.Empty;
+    private bool successMessage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        availableRoles = await UserManagementService.GetAllRolesAsync();
+        model.EmailConfirmed = true; // Default to true
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = string.Empty;
+        successMessage = false;
+
+        try
+        {
+            var result = await UserManagementService.CreateUserAsync(model);
+            
+            if (result.Success)
+            {
+                successMessage = true;
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/users");
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error al crear el usuario: " + ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private void GeneratePassword()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+        var random = new Random();
+        var password = new string(Enumerable.Repeat(chars, 12)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+        
+        model.Password = password;
+        model.ConfirmPassword = password;
+        showPassword = true;
+    }
+}

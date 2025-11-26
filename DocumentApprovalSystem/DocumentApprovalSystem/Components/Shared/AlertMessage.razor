@@ -1,0 +1,25 @@
+@if (IsVisible)
+{
+    <div class="alert alert-@Type alert-dismissible fade show" role="alert">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <i class="@Icon me-2"></i>
+        }
+        @Message
+        <button type="button" class="btn-close" @onclick="Close"></button>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string Type { get; set; } = "info"; // success, danger, warning, info
+    [Parameter] public string? Icon { get; set; }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+}

@@ -1,0 +1,316 @@
+@page "/documents/details/{Id:int}"
+@using DocumentApprovalSystem.Services
+@using DocumentApprovalSystem.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject IDocumentService DocumentService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize(Roles = "Administrador,Solicitante")]
+@rendermode InteractiveServer
+
+<PageTitle>Detalles del Documento | Sistema de Aprobación</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Detalles del Documento</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="documents" class="text-decoration-none">Expedientes</a></li>
+                <li class="breadcrumb-item active" aria-current="page">#@Id</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a href="documents" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i> Volver a la Lista
+        </a>
+    </div>
+</div>
+
+@if (document == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <!-- Main Content -->
+        <div class="col-12 col-lg-8">
+            <!-- Document Info Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Información</h5>
+                    <span class="badge @GetStatusBadgeClass(document.Status) fs-6">@GetStatusLabel(document.Status)</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label class="text-muted small text-uppercase fw-bold mb-1">Título</label>
+                        <div class="fs-5 fw-semibold">@document.Title</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-muted small text-uppercase fw-bold mb-1">Descripción</label>
+                        <p class="mb-0">@document.Description</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4 mb-md-0">
+                            <label class="text-muted small text-uppercase fw-bold mb-1">Solicitante</label>
+                            <div class="d-flex align-items-center mt-1">
+                                <div class="user-avatar bg-light text-primary me-2">
+                                    @(!string.IsNullOrEmpty(document.RequestedByUser?.FullName) ? document.RequestedByUser.FullName.Substring(0,1).ToUpper() : "?")
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">@(document.RequestedByUser?.FullName ?? "Usuario Desconocido")</div>
+                                    <small class="text-muted">@document.RequestedByUser?.Email</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold mb-1">Fecha de Creación</label>
+                            <div class="mt-1">
+                                <i class="bi bi-calendar3 me-2 text-muted"></i>
+                                @document.CreatedDate.ToString("f")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attachments Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Adjuntos</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(document.DocumentPath))
+                    {
+                        <div class="d-flex align-items-center p-3 border rounded bg-light">
+                            <i class="bi bi-file-earmark-text fs-3 text-primary me-3"></i>
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold">@System.IO.Path.GetFileName(document.DocumentPath)</div>
+                                <small class="text-muted">Archivo del Documento</small>
+                            </div>
+                            <a href="@document.DocumentPath" class="btn btn-sm btn-outline-primary" download target="_blank">
+                                <i class="bi bi-download me-2"></i> Descargar
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted fst-italic">No hay documentos adjuntos.</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Timeline / History -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Historial y Línea de Tiempo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        @if (document.Histories != null && document.Histories.Any())
+                        {
+                            @foreach (var history in document.Histories.OrderByDescending(h => h.Date))
+                            {
+                                <div class="timeline-item pb-4 position-relative ps-4 border-start">
+                                    <div class="timeline-dot position-absolute start-0 top-0 translate-middle bg-white border border-2 border-primary rounded-circle" style="width: 12px; height: 12px;"></div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="fw-semibold">@GetActionLabel(history.Action)</span>
+                                        <small class="text-muted">@history.Date.ToString("g")</small>
+                                    </div>
+                                    <p class="mb-1 small text-muted">por @history.User?.FullName</p>
+                                    @if (!string.IsNullOrEmpty(history.Notes))
+                                    {
+                                        <div class="bg-light p-2 rounded small mt-2">
+                                            @history.Notes
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-muted small">No hay historial disponible.</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Actions -->
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Acciones</h5>
+                </div>
+                <div class="card-body">
+                    <AuthorizeView Roles="Administrador">
+                        <Authorized>
+                            @if (document.Status == "Pending")
+                            {
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-success" @onclick="() => ShowApprovalModal(true)">
+                                        <i class="bi bi-check-circle me-2"></i> Aprobar Solicitud
+                                    </button>
+                                    <button class="btn btn-danger" @onclick="() => ShowApprovalModal(false)">
+                                        <i class="bi bi-x-circle me-2"></i> Rechazar Solicitud
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-light text-center mb-0 border">
+                                    <i class="bi bi-lock me-2"></i>
+                                    Esta solicitud está <strong>@GetStatusLabel(document.Status).ToLower()</strong> y no puede ser modificada.
+                                </div>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <div class="alert alert-info text-center mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Solo los administradores pueden aprobar o rechazar solicitudes.
+                            </div>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            @if (document.ApprovedByUser != null)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Detalles de Aprobación</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="text-muted small text-uppercase fw-bold">Procesado Por</label>
+                            <div class="d-flex align-items-center mt-1">
+                                <div class="user-avatar bg-light text-success me-2">
+                                    @(!string.IsNullOrEmpty(document.ApprovedByUser?.FullName) ? document.ApprovedByUser.FullName.Substring(0,1).ToUpper() : "?")
+                                </div>
+                                <span>@(document.ApprovedByUser?.FullName ?? "Usuario Desconocido")</span>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(document.Comments))
+                        {
+                            <div>
+                                <label class="text-muted small text-uppercase fw-bold">Comentarios</label>
+                                <p class="mb-0 mt-1 small">@document.Comments</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Approval/Rejection Modal -->
+<DocumentApprovalSystem.Components.Shared.GenericModal 
+    @bind-IsVisible="isModalVisible" 
+    Title="@(isApproving ? "Aprobar Solicitud" : "Rechazar Solicitud")"
+    OnConfirm="ProcessRequest">
+    <ChildContent>
+        <div class="mb-3">
+            <label class="form-label">Comentarios (Opcional)</label>
+            <textarea class="form-control" rows="3" @bind="actionComments" placeholder="Añadir notas sobre esta decisión..."></textarea>
+        </div>
+        @if (!isApproving)
+        {
+            <div class="alert alert-warning small">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                ¿Estás seguro de que deseas rechazar esta solicitud? Esta acción no se puede deshacer.
+            </div>
+        }
+    </ChildContent>
+    <FooterContent>
+        <button type="button" class="btn btn-secondary" @onclick="() => isModalVisible = false">Cancelar</button>
+        <button type="button" class="btn @(isApproving ? "btn-success" : "btn-danger")" @onclick="ProcessRequest">
+            @(isApproving ? "Confirmar Aprobación" : "Confirmar Rechazo")
+        </button>
+    </FooterContent>
+</DocumentApprovalSystem.Components.Shared.GenericModal>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private DocumentRequest? document;
+    private bool isModalVisible;
+    private bool isApproving;
+    private string actionComments = "";
+    private string currentUserId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        document = await DocumentService.GetDocumentByIdAsync(Id);
+        
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+            currentUserId = userIdClaim?.Value ?? "";
+        }
+    }
+
+    private string GetStatusBadgeClass(string status) => status switch
+    {
+        "Approved" => "badge-success",
+        "Rejected" => "badge-danger",
+        "Pending" => "badge-warning",
+        _ => "badge-info"
+    };
+
+    private string GetStatusLabel(string status) => status switch
+    {
+        "Approved" => "Aprobado",
+        "Rejected" => "Rechazado",
+        "Pending" => "Pendiente",
+        _ => status
+    };
+
+    private string GetActionLabel(string action) => action switch
+    {
+        "Created" => "Creado",
+        "Approved" => "Aprobado",
+        "Rejected" => "Rechazado",
+        _ => action
+    };
+
+    private void ShowApprovalModal(bool approve)
+    {
+        isApproving = approve;
+        actionComments = "";
+        isModalVisible = true;
+    }
+
+    private async Task ProcessRequest()
+    {
+        if (document == null) return;
+
+        bool success;
+        if (isApproving)
+        {
+            success = await DocumentService.ApproveAsync(Id, currentUserId, actionComments);
+        }
+        else
+        {
+            success = await DocumentService.RejectAsync(Id, currentUserId, actionComments);
+        }
+
+        if (success)
+        {
+            document = await DocumentService.GetDocumentByIdAsync(Id);
+        }
+
+        isModalVisible = false;
+        StateHasChanged();
+    }
+}

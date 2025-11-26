@@ -1,0 +1,106 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <i class="bi bi-files me-2 fs-4"></i>
+        <span>Menú</span>
+    </div>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="px-3 py-2 mb-3 border-bottom border-secondary">
+                <div class="d-flex align-items-center">
+                    <div class="user-avatar bg-light text-primary me-2" style="width: 32px; height: 32px;">
+                        @GetUserInitial(context.User.Identity?.Name)
+                    </div>
+                    <div class="flex-grow-1 text-truncate">
+                        <small class="text-white-50 d-block">@GetUserName(context.User.Identity?.Name)</small>
+                        <small class="text-white-50" style="font-size: 0.75rem;">@GetUserRole(context.User)</small>
+                    </div>
+                </div>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+    <ul class="sidebar-menu">
+        <li class="nav-item">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <i class="bi bi-speedometer2"></i> Panel Principal
+            </NavLink>
+        </li>
+        
+        <AuthorizeView>
+            <Authorized>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="documents">
+                        <i class="bi bi-folder2-open"></i> Expedientes
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="documents/upload">
+                        <i class="bi bi-cloud-upload"></i> Nuevo Documento
+                    </NavLink>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Administrador">
+            <Authorized>
+                <li class="nav-item mt-3">
+                    <div class="text-uppercase small px-3 mb-2" style="color: rgba(255,255,255,0.5);">Administración</div>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="users">
+                        <i class="bi bi-people"></i> Usuarios
+                    </NavLink>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized>
+                <li class="nav-item mt-auto">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <button type="submit" class="nav-link border-0 bg-transparent text-start w-100">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                        </button>
+                    </form>
+                </li>
+            </Authorized>
+            <NotAuthorized>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="Account/Login">
+                        <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                    </NavLink>
+                </li>
+            </NotAuthorized>
+        </AuthorizeView>
+    </ul>
+</div>
+
+<div class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+@code {
+    private string GetUserInitial(string? userName)
+    {
+        if (string.IsNullOrEmpty(userName)) return "?";
+        return userName.Substring(0, 1).ToUpper();
+    }
+
+    private string GetUserName(string? userName)
+    {
+        if (string.IsNullOrEmpty(userName)) return "Usuario";
+        // Extract name before @ if it's an email
+        var atIndex = userName.IndexOf('@');
+        return atIndex > 0 ? userName.Substring(0, atIndex) : userName;
+    }
+
+    private string GetUserRole(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Administrador")) return "Administrador";
+        if (user.IsInRole("Solicitante")) return "Solicitante";
+        return "Usuario";
+    }
+}

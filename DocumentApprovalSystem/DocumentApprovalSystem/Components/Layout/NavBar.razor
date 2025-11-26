@@ -1,0 +1,63 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<div class="top-navbar">
+    <div class="d-flex align-items-center">
+        <button class="btn btn-link text-white d-md-none me-3" onclick="toggleSidebar()">
+            <i class="bi bi-list fs-4"></i>
+        </button>
+        <a class="navbar-brand" href="/">DocumentApprovalSystem</a>
+    </div>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="user-profile dropdown">
+                <div class="d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="user-avatar">
+                        @context.User.Identity?.Name?.Substring(0, 1).ToUpper()
+                    </div>
+                    <span class="d-none d-md-block">@context.User.Identity?.Name</span>
+                    <i class="bi bi-chevron-down ms-2 fs-6"></i>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                    <li><span class="dropdown-header">Signed in as <br><strong>@context.User.Identity?.Name</strong></span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form action="Account/Logout" method="post">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="dropdown-item text-danger">
+                                <i class="bi bi-box-arrow-right me-2"></i> Sign out
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <a href="Account/Login" class="btn btn-light btn-sm fw-semibold">Sign In</a>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

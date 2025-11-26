@@ -1,0 +1,124 @@
+@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using DocumentApprovalSystem.Data
+
+@inject SignInManager<User> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Iniciar Sesión | Sistema de Aprobación</PageTitle>
+
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="text-center mb-4">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 64px; height: 64px;">
+                        <i class="bi bi-file-earmark-text-fill fs-2"></i>
+                    </div>
+                    <h3 class="mt-3 fw-bold text-dark">Bienvenido</h3>
+                    <p class="text-muted">Ingresa tus credenciales para continuar</p>
+                </div>
+
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-4 p-md-5">
+                        <StatusMessage message="@ErrorMessage" />
+                        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger mb-3" role="alert" />
+                            
+                            <div class="form-floating mb-3">
+                                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="nombre@ejemplo.com" />
+                                <label for="Input.Email" class="text-muted">Correo Electrónico</label>
+                                <ValidationMessage For="() => Input.Email" class="text-danger" />
+                            </div>
+                            
+                            <div class="form-floating mb-4">
+                                <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="contraseña" />
+                                <label for="Input.Password" class="text-muted">Contraseña</label>
+                                <ValidationMessage For="() => Input.Password" class="text-danger" />
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div class="form-check">
+                                    <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
+                                    <label class="form-check-label text-muted small" for="rememberMe">
+                                        Recordarme
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="w-100 btn btn-lg btn-primary mb-3 shadow-sm">
+                                <i class="bi bi-box-arrow-in-right me-2"></i> Entrar
+                            </button>
+                            
+                            <div class="text-center">
+                                <span class="text-muted small">¿No tienes cuenta?</span>
+                                <a href="Account/Register" class="text-decoration-none fw-semibold ms-1">Regístrate aquí</a>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4 text-muted small">
+                    &copy; @DateTime.Now.Year Sistema de Aprobación de Documentos
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? ErrorMessage;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    public async Task LoginUser()
+    {
+        // This doesn't count login failures towards account lockout
+        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            ErrorMessage = "Error: Intento de inicio de sesión inválido.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "El Correo es obligatorio.")]
+        [EmailAddress(ErrorMessage = "El Correo no es válido.")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "La Contraseña es obligatoria.")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Recordarme")]
+        public bool RememberMe { get; set; }
+    }
+}

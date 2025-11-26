@@ -1,0 +1,58 @@
+@* Confirm Dialog Component *@
+
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header @HeaderClass">
+                    <h5 class="modal-title">
+                        @if (!string.IsNullOrEmpty(Icon))
+                        {
+                            <i class="bi bi-@Icon me-2"></i>
+                        }
+                        @Title
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    @Message
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">@CancelText</button>
+                    <button type="button" class="btn @ConfirmButtonClass" @onclick="Confirm">@ConfirmText</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "Confirmar";
+    [Parameter] public string Message { get; set; } = "¿Está seguro?";
+    [Parameter] public string Icon { get; set; } = "question-circle";
+    [Parameter] public string ConfirmText { get; set; } = "Confirmar";
+    [Parameter] public string CancelText { get; set; } = "Cancelar";
+    [Parameter] public string ConfirmButtonClass { get; set; } = "btn-primary";
+    [Parameter] public string HeaderClass { get; set; } = "bg-light";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+
+    private async Task Confirm()
+    {
+        await OnConfirm.InvokeAsync();
+        await Close();
+    }
+
+    private async Task Cancel()
+    {
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
+    }
+}
