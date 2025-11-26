@@ -42,9 +42,13 @@ builder.Services.AddIdentityCore<User>(options => options.SignIn.RequireConfirme
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
+// Configure EmailSettings
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
+builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
 
 builder.Services.AddSingleton<IEmailSender<User>, IdentityNoOpEmailSender>();
 

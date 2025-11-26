@@ -2,6 +2,7 @@ using DocumentApprovalSystem.Data;
 using DocumentApprovalSystem.Models;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace DocumentApprovalSystem.Services;
 
@@ -11,12 +12,21 @@ public class DocumentService : IDocumentService
     private readonly IWebHostEnvironment _environment;
     private const long MaxFileSize = 100 * 1024 * 1024; // 100 MB
     private readonly ILogger<DocumentService> _logger;
+    private readonly IEmailNotificationService _emailService;
+    private readonly UserManager<User> _userManager;
 
-    public DocumentService(ApplicationDbContext context, IWebHostEnvironment environment, ILogger<DocumentService> logger)
+    public DocumentService(
+        ApplicationDbContext context, 
+        IWebHostEnvironment environment, 
+        ILogger<DocumentService> logger,
+        IEmailNotificationService emailService,
+        UserManager<User> userManager)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
+        _emailService = emailService;
+        _userManager = userManager;
     }
 
     public async Task<List<DocumentRequest>> GetAllAsync()
@@ -98,6 +108,21 @@ public class DocumentService : IDocumentService
             };
             _context.DocumentHistories.Add(history);
             await _context.SaveChangesAsync();
+
+            // Send email notification to approvers
+            try
+            {
+                var approvers = await _userManager.GetUsersInRoleAsync("Aprobador");
+                if (approvers.Any())
+                {
+                    await _emailService.SendNewDocumentNotificationAsync(request, approvers.ToList());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send email notifications");
+                // Don't fail the request creation if email fails
+            }
 
             return request;
         }
@@ -181,6 +206,20 @@ public class DocumentService : IDocumentService
         };
         _context.DocumentHistories.Add(history);
         await _context.SaveChangesAsync();
+
+        // Send email notification to approvers
+        try
+        {
+            var approvers = await _userManager.GetUsersInRoleAsync("Aprobador");
+            if (approvers.Any())
+            {
+                await _emailService.SendNewDocumentNotificationAsync(request, approvers.ToList());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send email notifications");
+        }
 
         return request;
     }

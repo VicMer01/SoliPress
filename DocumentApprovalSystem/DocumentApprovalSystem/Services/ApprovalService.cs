@@ -9,11 +9,16 @@ namespace DocumentApprovalSystem.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IEmailNotificationService _emailService;
 
-        public ApprovalService(ApplicationDbContext context, UserManager<User> userManager)
+        public ApprovalService(
+            ApplicationDbContext context, 
+            UserManager<User> userManager,
+            IEmailNotificationService emailService)
         {
             _context = context;
             _userManager = userManager;
+            _emailService = emailService;
         }
 
         public async Task<ApprovalConfig> GetConfigAsync()
@@ -143,6 +148,24 @@ namespace DocumentApprovalSystem.Services
             // If neither, stays Pending
 
             await _context.SaveChangesAsync();
+
+            // Send email notification to requester if status changed
+            if (isApproved || isRejected)
+            {
+                try
+                {
+                    var requester = await _context.Users.FindAsync(request.RequestedByUserId);
+                    if (requester != null)
+                    {
+                        await _emailService.SendApprovalStatusNotificationAsync(request, requester);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail
+                }
+            }
+
             return isApproved;
         }
     }
