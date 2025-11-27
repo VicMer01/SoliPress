@@ -14,19 +14,22 @@ public class DocumentService : IDocumentService
     private readonly ILogger<DocumentService> _logger;
     private readonly IEmailNotificationService _emailService;
     private readonly UserManager<User> _userManager;
+    private readonly IFileValidationService _fileValidationService;
 
     public DocumentService(
         ApplicationDbContext context, 
         IWebHostEnvironment environment, 
         ILogger<DocumentService> logger,
         IEmailNotificationService emailService,
-        UserManager<User> userManager)
+        UserManager<User> userManager,
+        IFileValidationService fileValidationService)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
         _emailService = emailService;
         _userManager = userManager;
+        _fileValidationService = fileValidationService;
     }
 
     public async Task<List<DocumentRequest>> GetAllAsync()
@@ -54,17 +57,15 @@ public class DocumentService : IDocumentService
         {
             _logger.LogInformation($"Starting file upload. Name: {file.Name}, Size: {file.Size}");
 
-            if (file.Size > MaxFileSize)
+            _logger.LogInformation($"Starting file upload. Name: {file.Name}, Size: {file.Size}");
+
+            var validationResult = await _fileValidationService.ValidateFileAsync(file);
+            if (!validationResult.IsValid)
             {
-                throw new Exception($"File size ({file.Size}) exceeds the maximum limit of {MaxFileSize} bytes.");
+                throw new Exception(validationResult.ErrorMessage);
             }
 
             var extension = Path.GetExtension(file.Name).ToLowerInvariant();
-            var allowedExtensions = new[] { ".pdf", ".docx", ".jpg", ".jpeg", ".png" };
-            if (!allowedExtensions.Contains(extension))
-            {
-                throw new Exception($"Invalid file type. Allowed types: {string.Join(", ", allowedExtensions)}");
-            }
 
             var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
             if (!Directory.Exists(uploadsFolder))

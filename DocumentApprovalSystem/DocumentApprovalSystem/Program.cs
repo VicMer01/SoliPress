@@ -44,11 +44,14 @@ builder.Services.AddIdentityCore<User>(options => options.SignIn.RequireConfirme
 
 // Configure EmailSettings
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+// Configure FileSettings
+builder.Services.Configure<FileSettings>(builder.Configuration.GetSection("FileSettings"));
 
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
 builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
+builder.Services.AddScoped<IFileValidationService, FileValidationService>();
 
 builder.Services.AddSingleton<IEmailSender<User>, IdentityNoOpEmailSender>();
 

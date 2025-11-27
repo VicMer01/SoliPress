@@ -10,15 +10,18 @@ namespace DocumentApprovalSystem.Services
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IEmailNotificationService _emailService;
+        private readonly ILogger<ApprovalService> _logger;
 
         public ApprovalService(
             ApplicationDbContext context, 
             UserManager<User> userManager,
-            IEmailNotificationService emailService)
+            IEmailNotificationService emailService,
+            ILogger<ApprovalService> logger)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
+            _logger = logger;
         }
 
         public async Task<ApprovalConfig> GetConfigAsync()
@@ -154,15 +157,22 @@ namespace DocumentApprovalSystem.Services
             {
                 try
                 {
+                    _logger.LogInformation($"Attempting to send email notification for request {requestId}. Status: {request.Status}");
                     var requester = await _context.Users.FindAsync(request.RequestedByUserId);
                     if (requester != null)
                     {
+                        _logger.LogInformation($"Sending email to {requester.Email}");
                         await _emailService.SendApprovalStatusNotificationAsync(request, requester);
+                        _logger.LogInformation("Email sent successfully");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Requester not found for request {requestId}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log but don't fail
+                    _logger.LogError(ex, $"Failed to send email notification for request {requestId}");
                 }
             }
 

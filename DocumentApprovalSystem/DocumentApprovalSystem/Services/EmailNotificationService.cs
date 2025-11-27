@@ -1,7 +1,8 @@
 using DocumentApprovalSystem.Models;
 using Microsoft.Extensions.Options;
-using System.Net;
-using System.Net.Mail;
+using MimeKit;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 
 namespace DocumentApprovalSystem.Services
 {
@@ -10,7 +11,7 @@ namespace DocumentApprovalSystem.Services
         private readonly EmailSettings _emailSettings;
         private readonly ILogger<EmailNotificationService> _logger;
 
-        public EmailNotificationService(IOptions<EmailSettings> emailSettings, ILogger<EmailNotificationService> logger)
+        public EmailNotificationService(IOptionsSnapshot<EmailSettings> emailSettings, ILogger<EmailNotificationService> logger)
         {
             _emailSettings = emailSettings.Value;
             _logger = logger;
@@ -74,22 +75,27 @@ namespace DocumentApprovalSystem.Services
         {
             try
             {
-                using var smtpClient = new SmtpClient(_emailSettings.Host, _emailSettings.Port)
-                {
-                    Credentials = new NetworkCredential(_emailSettings.Username, _emailSettings.Password),
-                    EnableSsl = _emailSettings.EnableSsl
-                };
+                var message = new MimeMessage();
+                message.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                message.To.Add(new MailboxAddress("", to));
+                message.Subject = subject;
 
-                var mailMessage = new MailMessage
+                var bodyBuilder = new BodyBuilder
                 {
-                    From = new MailAddress(_emailSettings.FromEmail, _emailSettings.FromName),
-                    Subject = subject,
-                    Body = body,
-                    IsBodyHtml = true
+                    HtmlBody = body
                 };
-                mailMessage.To.Add(to);
+                message.Body = bodyBuilder.ToMessageBody();
 
-                await smtpClient.SendMailAsync(mailMessage);
+                using var client = new SmtpClient();
+                // Accept all SSL certificates (in case of self-signed, though Gmail is valid)
+                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                client.Timeout = 5000; // 5 seconds timeout to avoid hanging UI
+
+                await client.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.Auto);
+                await client.AuthenticateAsync(_emailSettings.Username, _emailSettings.Password);
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+
                 _logger.LogInformation($"Email sent to {to}: {subject}");
             }
             catch (Exception ex)
