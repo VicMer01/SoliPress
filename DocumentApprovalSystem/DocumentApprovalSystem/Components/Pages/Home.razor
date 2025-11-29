@@ -2,85 +2,117 @@
 @using DocumentApprovalSystem.Models
 @using DocumentApprovalSystem.Services
 @using DocumentApprovalSystem.Components.Shared
+@using Microsoft.AspNetCore.Authorization
+@inject IDashboardService DashboardService
 @inject IDocumentService DocumentService
 @attribute [Authorize]
 @rendermode InteractiveServer
 
 <PageTitle>Panel Principal | Sistema de Aprobación</PageTitle>
 
-<div class="row mb-4">
-    <div class="col-12">
-        <h2 class="fw-bold">Panel Principal</h2>
-        <p class="text-secondary">Bienvenido al Sistema de Aprobación de Documentos</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Panel Principal</h2>
+        <p class="text-muted mb-0">Resumen de actividad del sistema</p>
+    </div>
+    <div>
+        <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>
+            Actualizado: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+        </small>
     </div>
 </div>
 
 <!-- Stats Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card stats-card">
-            <div class="stats-icon bg-warning bg-opacity-10 text-warning">
-                <i class="bi bi-hourglass-split"></i>
-            </div>
-            <div class="stats-info">
-                <h3>@pendingCount</h3>
-                <p>Pendientes</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stats-card">
-            <div class="stats-icon bg-success bg-opacity-10 text-success">
-                <i class="bi bi-check-circle"></i>
-            </div>
-            <div class="stats-info">
-                <h3>@approvedCount</h3>
-                <p>Aprobados</p>
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-hourglass-split fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="mb-0 fw-bold">@pendingCount</h3>
+                        <p class="text-muted mb-0 small">Pendientes</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card stats-card">
-            <div class="stats-icon bg-danger bg-opacity-10 text-danger">
-                <i class="bi bi-x-circle"></i>
-            </div>
-            <div class="stats-info">
-                <h3>@rejectedCount</h3>
-                <p>Rechazados</p>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-icon bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check-circle fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="mb-0 fw-bold">@approvedCount</h3>
+                        <p class="text-muted mb-0 small">Aprobados</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card stats-card">
-            <div class="stats-icon bg-primary bg-opacity-10 text-primary">
-                <i class="bi bi-files"></i>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-icon bg-danger bg-opacity-10 text-danger">
+                            <i class="bi bi-x-circle fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="mb-0 fw-bold">@rejectedCount</h3>
+                        <p class="text-muted mb-0 small">Rechazados</p>
+                    </div>
+                </div>
             </div>
-            <div class="stats-info">
-                <h3>@totalCount</h3>
-                <p>Total Documentos</p>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-files fs-3"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h3 class="mb-0 fw-bold">@totalCount</h3>
+                        <p class="text-muted mb-0 small">Total</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
+<div class="row g-4">
     <!-- Recent Documents -->
-    <div class="col-md-8">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Documentos Recientes</span>
-                <a href="documents" class="btn btn-sm btn-outline-primary">Ver Todo</a>
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Documentos Recientes</h5>
+                <a href="documents" class="btn btn-sm btn-outline-primary">Ver Todos</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th>Título</th>
+                                <th class="ps-3">Título</th>
                                 <th>Solicitante</th>
                                 <th>Fecha</th>
                                 <th>Estado</th>
-                                <th>Acción</th>
+                                <th class="text-end pe-3">Acción</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -97,16 +129,26 @@
                                 @foreach (var doc in recentDocuments)
                                 {
                                     <tr>
-                                        <td class="fw-bold">@doc.Title</td>
-                                        <td>@doc.RequestedByUser?.FullName</td>
-                                        <td>@doc.CreatedDate.ToShortDateString()</td>
+                                        <td class="ps-3">
+                                            <div class="fw-semibold">@doc.Title</div>
+                                            <small class="text-muted">ID: #@doc.Id</small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar bg-light text-primary me-2" style="width:24px;height:24px;font-size:10px;">
+                                                    @(!string.IsNullOrEmpty(doc.RequestedByUser?.FullName) ? doc.RequestedByUser.FullName.Substring(0,1).ToUpper() : "?")
+                                                </div>
+                                                <span class="small">@(doc.RequestedByUser?.FullName ?? "Desconocido")</span>
+                                            </div>
+                                        </td>
+                                        <td><small>@doc.CreatedDate.ToString("dd/MM/yyyy")</small></td>
                                         <td>
                                             <span class="badge @GetStatusBadgeClass(doc.Status)">
                                                 @GetStatusLabel(doc.Status)
                                             </span>
                                         </td>
-                                        <td>
-                                            <a href="documents/details/@doc.Id" class="btn btn-sm btn-light text-primary">
+                                        <td class="text-end pe-3">
+                                            <a href="documents/details/@doc.Id" class="btn btn-sm btn-outline-secondary">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                         </td>
@@ -120,70 +162,176 @@
         </div>
     </div>
 
-    <!-- Quick Actions / Chart Placeholder -->
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">Acciones Rápidas</div>
+    <!-- Sidebar -->
+    <div class="col-12 col-lg-4">
+        <!-- Quick Actions -->
+        <AuthorizeView Roles="Administrador,Solicitante,Aprobador">
+            <Authorized>
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Acciones Rápidas</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="documents/upload" class="btn btn-primary">
+                                <i class="bi bi-cloud-upload me-2"></i> Nuevo Documento
+                            </a>
+                            <a href="documents" class="btn btn-outline-secondary">
+                                <i class="bi bi-search me-2"></i> Buscar Documentos
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <!-- Performance Metrics -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Métricas</h6>
+            </div>
             <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="documents/upload" class="btn btn-primary">
-                        <i class="bi bi-cloud-upload me-2"></i> Nuevo Documento
-                    </a>
-                    <a href="documents" class="btn btn-outline-secondary">
-                        <i class="bi bi-search me-2"></i> Buscar Documento
-                    </a>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Tasa de Aprobación</small>
+                        <small class="fw-bold">@approvalRate%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: @(approvalRate)%" aria-valuenow="@approvalRate" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Documentos Pendientes</small>
+                        <small class="fw-bold">@(totalCount > 0 ? Math.Round((double)pendingCount / totalCount * 100, 1) : 0)%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: @(totalCount > 0 ? (double)pendingCount / totalCount * 100 : 0)%" aria-valuenow="@pendingCount" aria-valuemin="0" aria-valuemax="@totalCount"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Tasa de Rechazo</small>
+                        <small class="fw-bold">@(totalCount > 0 ? Math.Round((double)rejectedCount / totalCount * 100, 1) : 0)%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: @(totalCount > 0 ? (double)rejectedCount / totalCount * 100 : 0)%" aria-valuenow="@rejectedCount" aria-valuemin="0" aria-valuemax="@totalCount"></div>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card-header">Resumen Semanal</div>
-            <div class="card-body text-center py-5 text-muted">
-                <i class="bi bi-bar-chart fs-1 mb-2 d-block"></i>
-                <p>Gráfico de actividad próximamente</p>
+
+        <!-- Recent Activity -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-activity me-2"></i>Actividad Reciente</h6>
+            </div>
+            <div class="card-body">
+                @if (recentActivity == null)
+                {
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    </div>
+                }
+                else if (!recentActivity.Any())
+                {
+                    <p class="text-muted text-center small mb-0">No hay actividad reciente</p>
+                }
+                else
+                {
+                    <div class="activity-feed">
+                        @foreach (var activity in recentActivity.Take(5))
+                        {
+                            <div class="activity-item mb-3 pb-3 border-bottom">
+                                <div class="d-flex">
+                                    <div class="activity-icon me-2">
+                                        <i class="bi @GetActivityIcon(activity.Action) text-primary"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="small">
+                                            <strong>@(activity.User?.FullName ?? activity.UserId)</strong>
+                                            <span class="text-muted">@GetActionLabel(activity.Action)</span>
+                                        </div>
+                                        <small class="text-muted">@activity.Timestamp.ToString("dd/MM HH:mm")</small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    .avatar-icon {
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+    }
+</style>
+
 @code {
     private List<DocumentRequest>? recentDocuments;
+    private List<AuditLog>? recentActivity;
     private int pendingCount;
     private int approvedCount;
     private int rejectedCount;
     private int totalCount;
+    private double approvalRate;
 
     protected override async Task OnInitializedAsync()
     {
+        // Load statistics
+        totalCount = await DashboardService.GetTotalDocumentsAsync();
+        pendingCount = await DashboardService.GetPendingDocumentsAsync();
+        approvedCount = await DashboardService.GetApprovedDocumentsAsync();
+        rejectedCount = await DashboardService.GetRejectedDocumentsAsync();
+        approvalRate = await DashboardService.GetApprovalRateAsync();
+
+        // Load recent documents
         var allDocs = await DocumentService.GetDocumentsAsync();
-        
-        totalCount = allDocs.Count;
-        pendingCount = allDocs.Count(d => d.Status == "Pending");
-        approvedCount = allDocs.Count(d => d.Status == "Approved");
-        rejectedCount = allDocs.Count(d => d.Status == "Rejected");
+        recentDocuments = allDocs.OrderByDescending(d => d.CreatedDate).Take(5).ToList();
 
-        recentDocuments = allDocs.Take(5).ToList();
+        // Load recent activity
+        recentActivity = await DashboardService.GetRecentActivityAsync(5);
     }
 
-    private string GetStatusBadgeClass(string status)
+    private string GetStatusBadgeClass(string status) => status switch
     {
-        return status switch
-        {
-            "Approved" => "badge-success",
-            "Rejected" => "badge-danger",
-            "Pending" => "badge-warning",
-            _ => "badge-info"
-        };
-    }
+        "Approved" => "badge-success",
+        "Rejected" => "badge-danger",
+        "Pending" => "badge-warning",
+        _ => "badge-info"
+    };
 
-    private string GetStatusLabel(string status)
+    private string GetStatusLabel(string status) => status switch
     {
-        return status switch
-        {
-            "Approved" => "Aprobado",
-            "Rejected" => "Rechazado",
-            "Pending" => "Pendiente",
-            _ => status
-        };
-    }
+        "Approved" => "Aprobado",
+        "Rejected" => "Rechazado",
+        "Pending" => "Pendiente",
+        _ => status
+    };
+
+    private string GetActivityIcon(string action) => action switch
+    {
+        "Created" => "bi-plus-circle",
+        "Voted" => "bi-hand-thumbs-up",
+        "Approved" => "bi-check-circle",
+        "Rejected" => "bi-x-circle",
+        _ => "bi-circle"
+    };
+
+    private string GetActionLabel(string action) => action switch
+    {
+        "Created" => "Creado",
+        "Approved" => "Aprobado",
+        "Rejected" => "Rechazado",
+        "Voted" => "Votado",
+        _ => action
+    };
 }

@@ -6,7 +6,7 @@
 @inject IDocumentService DocumentService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@attribute [Authorize(Roles = "Administrador,Solicitante,Aprobador")]
+@attribute [Authorize(Roles = "Administrador,Solicitante,Aprobador,Auditor")]
 @rendermode InteractiveServer
 
 <PageTitle>Detalles del Documento | Sistema de Aprobación</PageTitle>
@@ -149,7 +149,11 @@ else
         <div class="col-12 col-lg-4">
             
             <!-- Voting Controls -->
-            <DocumentApprovalSystem.Components.Shared.VotingControls RequestId="@Id" OnVoteCast="RefreshDocument" />
+            <AuthorizeView Roles="Administrador,Aprobador">
+                <Authorized>
+                    <DocumentApprovalSystem.Components.Shared.VotingControls RequestId="@Id" OnVoteCast="RefreshDocument" />
+                </Authorized>
+            </AuthorizeView>
 
             <div class="card border-0 shadow-sm mb-4 mt-4">
                 <div class="card-header bg-white">
@@ -213,6 +217,8 @@ else
                     </div>
                 </div>
             }
+
+
         </div>
     </div>
 }

@@ -6,81 +6,165 @@
 @inject IApprovalService ApprovalService
 @inject NavigationManager NavigationManager
 @inject ILogger<ApprovalConfigPage> Logger
+@rendermode InteractiveServer
 
-<PageTitle>Configuración de Aprobaciones</PageTitle>
+<PageTitle>Configuración de Aprobaciones | Sistema de Aprobación</PageTitle>
 
-<div class="container mt-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h3 class="mb-0">Configuración de Aprobaciones</h3>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Configuración de Aprobaciones</h2>
+        <p class="text-muted mb-0">Gestiona las reglas de aprobación del sistema</p>
+    </div>
+</div>
+
+@if (config == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
         </div>
-        <div class="card-body">
-            @if (config == null)
-            {
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <!-- Configuration Form -->
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Configuración</h5>
                 </div>
-            }
-            else
-            {
-                <EditForm Model="@config" OnValidSubmit="HandleValidSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
+                <div class="card-body">
+                    <EditForm Model="@config" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
 
-                    <div class="mb-3">
-                        <label for="mode" class="form-label">Modo de Aprobación</label>
-                        <InputSelect id="mode" class="form-select" @bind-Value="config.Mode">
-                            <option value="@ApprovalMode.Majority">Mayoría</option>
-                            <option value="@ApprovalMode.Unanimous">Unánime</option>
-                            <option value="@ApprovalMode.MinVotes">Número Mínimo de Votos</option>
-                            <option value="@ApprovalMode.MinPercentage">Porcentaje Mínimo</option>
-                        </InputSelect>
-                        <div class="form-text">
-                            Seleccione cómo se deben aprobar las solicitudes.
+                        <div class="mb-4">
+                            <label for="mode" class="form-label fw-semibold">Modo de Aprobación</label>
+                            <InputSelect id="mode" class="form-select form-select-lg" @bind-Value="config.Mode">
+                                <option value="@ApprovalMode.Unanimous">Unánime</option>
+                                <option value="@ApprovalMode.Majority">Mayoría Simple</option>
+                                <option value="@ApprovalMode.MinVotes">Número Mínimo de Votos</option>
+                                <option value="@ApprovalMode.MinPercentage">Porcentaje Mínimo</option>
+                            </InputSelect>
+                            <div class="form-text">
+                                @GetModeDescription(config.Mode)
+                            </div>
                         </div>
-                    </div>
 
+                        @if (config.Mode == ApprovalMode.MinVotes || config.Mode == ApprovalMode.MinPercentage)
+                        {
+                            <div class="mb-4">
+                                <label for="threshold" class="form-label fw-semibold">
+                                    @(config.Mode == ApprovalMode.MinVotes ? "Número Mínimo de Votos" : "Porcentaje Mínimo (%)")
+                                </label>
+                                <div class="input-group input-group-lg">
+                                    <InputNumber id="threshold" class="form-control" @bind-Value="config.ThresholdValue" min="1" max="@(config.Mode == ApprovalMode.MinPercentage ? 100 : 999)" />
+                                    @if (config.Mode == ApprovalMode.MinPercentage)
+                                    {
+                                        <span class="input-group-text">%</span>
+                                    }
+                                </div>
+                                <div class="form-text">
+                                    @if (config.Mode == ApprovalMode.MinPercentage)
+                                    {
+                                        <span>Ingrese un valor entre 1 y 100</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Ingrese el número mínimo de votos requeridos</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <InputCheckbox id="commentsRequired" class="form-check-input" @bind-Value="config.CommentsRequired" />
+                                <label class="form-check-label" for="commentsRequired">
+                                    <strong>Comentarios obligatorios al votar</strong>
+                                </label>
+                            </div>
+                            <div class="form-text ms-4">
+                                Los aprobadores deberán proporcionar comentarios al emitir su voto
+                            </div>
+                        </div>
+
+                        @if (successMessage != null)
+                        {
+                            <div class="alert alert-success d-flex align-items-center" role="alert">
+                                <i class="bi bi-check-circle-fill me-2"></i>
+                                @successMessage
+                            </div>
+                        }
+
+                        @if (errorMessage != null)
+                        {
+                            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                @errorMessage
+                            </div>
+                        }
+
+                        <div class="d-grid gap-2 d-md-flex">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save me-2"></i>Guardar Configuración
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Configuración Actual</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted text-uppercase">Modo</small>
+                        <div class="fw-bold">@GetModeName(config.Mode)</div>
+                    </div>
                     @if (config.Mode == ApprovalMode.MinVotes || config.Mode == ApprovalMode.MinPercentage)
                     {
                         <div class="mb-3">
-                            <label for="threshold" class="form-label">
-                                @(config.Mode == ApprovalMode.MinVotes ? "Número Mínimo de Votos" : "Porcentaje Mínimo (%)")
-                            </label>
-                            <InputNumber id="threshold" class="form-control" @bind-Value="config.ThresholdValue" />
+                            <small class="text-muted text-uppercase">Umbral</small>
+                            <div class="fw-bold">
+                                @config.ThresholdValue@(config.Mode == ApprovalMode.MinPercentage ? "%" : " votos")
+                            </div>
                         </div>
                     }
-
                     <div class="mb-3">
-                        <div class="form-check">
-                            <InputCheckbox id="commentsRequired" class="form-check-input" @bind-Value="config.CommentsRequired" />
-                            <label class="form-check-label" for="commentsRequired">
-                                Comentarios obligatorios al votar
-                            </label>
-                        </div>
-                        <div class="form-text">
-                            Si está activado, los aprobadores deberán proporcionar comentarios al emitir su voto.
+                        <small class="text-muted text-uppercase">Comentarios</small>
+                        <div class="fw-bold">
+                            @(config.CommentsRequired ? "Obligatorios" : "Opcionales")
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    @if (successMessage != null)
-                    {
-                        <div class="alert alert-success" role="alert">
-                            @successMessage
-                        </div>
-                    }
-
-                    <button type="submit" class="btn btn-primary">Guardar Configuración</button>
-                </EditForm>
-            }
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Ayuda</h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        <strong>Unánime:</strong> Todos los aprobadores deben votar a favor.<br><br>
+                        <strong>Mayoría:</strong> Más del 50% de los votos deben ser a favor.<br><br>
+                        <strong>Mínimo de Votos:</strong> Se requiere un número específico de votos a favor.<br><br>
+                        <strong>Porcentaje Mínimo:</strong> Se requiere un porcentaje específico de votos a favor.
+                    </small>
+                </div>
+            </div>
         </div>
     </div>
-</div>
+}
 
 @code {
     private ApprovalConfig? config;
     private string? successMessage;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,6 +175,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading approval config");
+            errorMessage = "Error al cargar la configuración";
         }
     }
 
@@ -98,14 +183,54 @@
     {
         if (config != null)
         {
-            await ApprovalService.UpdateConfigAsync(config);
-            successMessage = "Configuración guardada exitosamente.";
-            StateHasChanged();
-            
-            // Clear message after 3 seconds
-            await Task.Delay(3000);
-            successMessage = null;
-            StateHasChanged();
+            try
+            {
+                // Validate threshold values
+                if (config.Mode == ApprovalMode.MinPercentage && (config.ThresholdValue < 1 || config.ThresholdValue > 100))
+                {
+                    errorMessage = "El porcentaje debe estar entre 1 y 100";
+                    return;
+                }
+
+                if (config.Mode == ApprovalMode.MinVotes && config.ThresholdValue < 1)
+                {
+                    errorMessage = "El número mínimo de votos debe ser al menos 1";
+                    return;
+                }
+
+                await ApprovalService.UpdateConfigAsync(config);
+                successMessage = "✓ Configuración guardada exitosamente";
+                errorMessage = null;
+                StateHasChanged();
+                
+                // Clear message after 3 seconds
+                await Task.Delay(3000);
+                successMessage = null;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error saving approval config");
+                errorMessage = "Error al guardar la configuración";
+            }
         }
     }
+
+    private string GetModeName(ApprovalMode mode) => mode switch
+    {
+        ApprovalMode.Unanimous => "Unánime",
+        ApprovalMode.Majority => "Mayoría Simple",
+        ApprovalMode.MinVotes => "Número Mínimo de Votos",
+        ApprovalMode.MinPercentage => "Porcentaje Mínimo",
+        _ => mode.ToString()
+    };
+
+    private string GetModeDescription(ApprovalMode mode) => mode switch
+    {
+        ApprovalMode.Unanimous => "Todos los aprobadores deben votar a favor para aprobar el documento",
+        ApprovalMode.Majority => "Se requiere que más del 50% de los votos sean a favor",
+        ApprovalMode.MinVotes => "Se requiere un número específico de votos a favor",
+        ApprovalMode.MinPercentage => "Se requiere un porcentaje específico de votos a favor",
+        _ => ""
+    };
 }

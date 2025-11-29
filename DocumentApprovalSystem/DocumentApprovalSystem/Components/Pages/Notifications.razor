@@ -1,0 +1,144 @@
+@page "/notifications"
+@using DocumentApprovalSystem.Models
+@using DocumentApprovalSystem.Services
+@using Microsoft.AspNetCore.Authorization
+@inject INotificationService NotificationService
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Notificaciones | Sistema de Aprobación</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Notificaciones</h2>
+        <p class="text-muted mb-0">Mantente al día con las actualizaciones del sistema</p>
+    </div>
+    <div>
+        <button class="btn btn-outline-primary" @onclick="MarkAllAsRead" disabled="@(!hasUnread)">
+            <i class="bi bi-check-all me-2"></i> Marcar todo como leído
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        @if (notifications == null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
+        else if (!notifications.Any())
+        {
+            <div class="text-center py-5">
+                <div class="mb-3 text-muted">
+                    <i class="bi bi-bell-slash fs-1"></i>
+                </div>
+                <h5 class="text-muted">No tienes notificaciones</h5>
+            </div>
+        }
+        else
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var notification in notifications)
+                {
+                    <div class="list-group-item list-group-item-action p-4 @(notification.IsRead ? "bg-light" : "bg-white border-start border-4 border-primary")" 
+                         @onclick="() => HandleClick(notification)" style="cursor: pointer;">
+                        <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                            <h6 class="mb-0 fw-bold @(notification.IsRead ? "text-muted" : "text-dark")">
+                                <i class="bi @GetIconClass(notification.Type) me-2"></i>
+                                @notification.Title
+                            </h6>
+                            <small class="text-muted">@GetTimeAgo(notification.CreatedDate)</small>
+                        </div>
+                        <p class="mb-1 text-secondary ps-4">@notification.Message</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+
+    private List<Notification>? notifications;
+    private string? userId;
+    private bool hasUnread => notifications?.Any(n => !n.IsRead) ?? false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationStateTask != null)
+        {
+            var authState = await authenticationStateTask;
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated ?? false)
+            {
+                // We need to get the User ID from claims
+                // Assuming the ID is in the NameIdentifier claim or similar
+                // In a real app, you might need to fetch the user from UserManager if ID is not in claims
+                // But Identity usually puts ID in NameIdentifier
+                var userIdClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim != null)
+                {
+                    userId = userIdClaim.Value;
+                    await LoadNotifications();
+                }
+            }
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        if (!string.IsNullOrEmpty(userId))
+        {
+            notifications = await NotificationService.GetUserNotificationsAsync(userId);
+        }
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await NotificationService.MarkAllAsReadAsync(userId);
+            await LoadNotifications();
+        }
+    }
+
+    private async Task HandleClick(Notification notification)
+    {
+        if (!notification.IsRead)
+        {
+            await NotificationService.MarkAsReadAsync(notification.Id);
+            notification.IsRead = true; // Optimistic update
+        }
+
+        if (!string.IsNullOrEmpty(notification.Link))
+        {
+            NavigationManager.NavigateTo(notification.Link);
+        }
+    }
+
+    private string GetIconClass(string type) => type switch
+    {
+        "Success" => "bi-check-circle-fill text-success",
+        "Error" => "bi-x-circle-fill text-danger",
+        "Warning" => "bi-exclamation-triangle-fill text-warning",
+        _ => "bi-info-circle-fill text-primary"
+    };
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var span = DateTime.Now - date;
+        if (span.TotalMinutes < 1) return "Hace un momento";
+        if (span.TotalMinutes < 60) return $"Hace {(int)span.TotalMinutes} min";
+        if (span.TotalHours < 24) return $"Hace {(int)span.TotalHours} h";
+        if (span.TotalDays < 7) return $"Hace {(int)span.TotalDays} d";
+        return date.ToString("dd/MM/yyyy");
+    }
+}

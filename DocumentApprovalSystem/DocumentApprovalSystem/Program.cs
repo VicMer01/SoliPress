@@ -52,6 +52,10 @@ builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
 builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddHostedService<ReminderBackgroundService>();
 
 builder.Services.AddSingleton<IEmailSender<User>, IdentityNoOpEmailSender>();
 
@@ -66,6 +70,7 @@ using (var scope = app.Services.CreateScope())
         await context.Database.MigrateAsync();
         await RoleSeeder.SeedRolesAsync(services);
         await RoleSeeder.SeedAdminUserAsync(services);
+        await RoleSeeder.SeedApprovalConfigAsync(services);
     }
     catch (Exception ex)
     {

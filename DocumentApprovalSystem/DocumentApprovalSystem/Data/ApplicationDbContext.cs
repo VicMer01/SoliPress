@@ -16,6 +16,8 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public DbSet<DocumentHistory> DocumentHistories { get; set; }
     public DbSet<ApprovalVote> ApprovalVotes { get; set; }
     public DbSet<ApprovalConfig> ApprovalConfigs { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -1,0 +1,145 @@
+@page "/audit-logs"
+@using DocumentApprovalSystem.Services
+@using DocumentApprovalSystem.Models
+@using Microsoft.AspNetCore.Authorization
+@inject IAuditService AuditService
+@attribute [Authorize(Roles = "Administrador,Auditor")]
+@rendermode InteractiveServer
+
+<PageTitle>Auditoría del Sistema | Sistema de Aprobación</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Auditoría del Sistema</h2>
+        <p class="text-muted mb-0">Registro completo de actividades y eventos del sistema.</p>
+    </div>
+    <div>
+        <button class="btn btn-outline-secondary" @onclick="LoadLogs">
+            <i class="bi bi-arrow-clockwise me-2"></i> Actualizar
+        </button>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <!-- Filters (Placeholder for future implementation) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar en logs..." @bind="searchTerm" @bind:event="oninput" />
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Fecha/Hora</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Documento</th>
+                        <th>Detalles</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (filteredLogs == null)
+                    {
+                        <tr><td colspan="6" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></td></tr>
+                    }
+                    else if (!filteredLogs.Any())
+                    {
+                        <tr><td colspan="6" class="text-center py-5 text-muted">No se encontraron registros.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var log in filteredLogs)
+                        {
+                            <tr>
+                                <td class="text-nowrap">@log.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar bg-light text-primary me-2" style="width:24px;height:24px;font-size:10px;">
+                                            @(!string.IsNullOrEmpty(log.User?.FullName) ? log.User.FullName.Substring(0,1).ToUpper() : "?")
+                                        </div>
+                                        <span>@(log.User?.FullName ?? log.UserId)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @GetActionClass(log.Action)">@GetActionLabel(log.Action)</span>
+                                </td>
+                                <td>
+                                    @if (log.DocumentRequest != null)
+                                    {
+                                        <a href="documents/details/@log.DocumentRequestId" class="text-decoration-none">
+                                            #@log.DocumentRequestId - @log.DocumentRequest.Title
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    <small class="text-muted">@log.Details</small>
+                                </td>
+                                <td><small class="text-muted font-monospace">@log.IpAddress</small></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<AuditLog>? logs;
+    private string searchTerm = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        logs = await AuditService.GetAllLogsAsync();
+    }
+
+    private List<AuditLog>? filteredLogs
+    {
+        get
+        {
+            if (logs == null) return null;
+            if (string.IsNullOrWhiteSpace(searchTerm)) return logs;
+
+            return logs.Where(l => 
+                (l.User?.FullName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (l.Action?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (l.Details?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (l.DocumentRequest?.Title?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+            ).ToList();
+        }
+    }
+
+    private string GetActionClass(string action) => action switch
+    {
+        "Created" => "bg-primary",
+        "Approved" => "bg-success",
+        "Rejected" => "bg-danger",
+        "Voted" => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+
+    private string GetActionLabel(string action) => action switch
+    {
+        "Created" => "Creado",
+        "Approved" => "Aprobado",
+        "Rejected" => "Rechazado",
+        "Voted" => "Votado",
+        _ => action
+    };
+}

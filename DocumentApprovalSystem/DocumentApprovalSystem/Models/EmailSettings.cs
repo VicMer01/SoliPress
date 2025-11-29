@@ -9,5 +9,6 @@ namespace DocumentApprovalSystem.Models
         public string FromEmail { get; set; } = string.Empty;
         public string FromName { get; set; } = "Sistema de Aprobación";
         public bool EnableSsl { get; set; } = true;
+        public bool Enabled { get; set; } = true; // Set to false to disable email sending
     }
 }

@@ -8,7 +8,7 @@ public static class RoleSeeder
     public static async Task SeedRolesAsync(IServiceProvider serviceProvider)
     {
         var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-        string[] roleNames = { "Administrador", "Solicitante", "Aprobador" };
+        string[] roleNames = { "Administrador", "Solicitante", "Aprobador", "Auditor" };
 
         foreach (var roleName in roleNames)
         {
@@ -61,6 +61,31 @@ public static class RoleSeeder
         else
         {
             logger.LogInformation("Admin user already exists: {Email}", adminEmail);
+        }
+    }
+
+    public static async Task SeedApprovalConfigAsync(IServiceProvider serviceProvider)
+    {
+        var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+        // Check if any config exists
+        if (!context.ApprovalConfigs.Any())
+        {
+            var defaultConfig = new ApprovalConfig
+            {
+                Mode = ApprovalMode.Unanimous,
+                ThresholdValue = 0,
+                CommentsRequired = false
+            };
+
+            context.ApprovalConfigs.Add(defaultConfig);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Default approval configuration created: Unanimous mode");
+        }
+        else
+        {
+            logger.LogInformation("Approval configuration already exists");
         }
     }
 }

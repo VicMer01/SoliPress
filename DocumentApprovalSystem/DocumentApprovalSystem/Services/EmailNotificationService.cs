@@ -26,6 +26,12 @@ namespace DocumentApprovalSystem.Services
 
         public async Task SendNewDocumentNotificationAsync(DocumentRequest request, List<User> approvers)
         {
+            if (!_emailSettings.Enabled)
+            {
+                _logger.LogInformation("Email notifications disabled in configuration");
+                return;
+            }
+
             if (!await IsConfiguredAsync())
             {
                 _logger.LogWarning("Email not configured, skipping notification");
@@ -45,6 +51,12 @@ namespace DocumentApprovalSystem.Services
 
         public async Task SendApprovalStatusNotificationAsync(DocumentRequest request, User requester)
         {
+            if (!_emailSettings.Enabled)
+            {
+                _logger.LogInformation("Email notifications disabled in configuration");
+                return;
+            }
+
             if (!await IsConfiguredAsync() || string.IsNullOrEmpty(requester.Email))
             {
                 _logger.LogWarning("Email not configured or requester has no email");

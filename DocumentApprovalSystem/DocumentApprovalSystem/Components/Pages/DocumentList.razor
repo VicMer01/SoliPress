@@ -1,10 +1,12 @@
 @page "/documents"
 @using DocumentApprovalSystem.Services
 @using DocumentApprovalSystem.Models
+@using DocumentApprovalSystem.Models.ViewModels
 @using Microsoft.AspNetCore.Authorization
 @inject IDocumentService DocumentService
+@inject IUserManagementService UserManagementService
 @inject NavigationManager NavigationManager
-@attribute [Authorize(Roles = "Administrador,Solicitante,Aprobador")]
+@attribute [Authorize(Roles = "Administrador,Solicitante,Aprobador,Auditor")]
 @rendermode InteractiveServer
 
 <PageTitle>Expedientes | Sistema de Aprobación</PageTitle>
@@ -20,35 +22,112 @@
         </nav>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="documents/upload" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-2"></i> Nuevo Documento
-        </a>
+        <AuthorizeView Roles="Administrador,Solicitante,Aprobador">
+            <Authorized>
+                <a href="documents/upload" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2"></i> Nuevo Documento
+                </a>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-body">
-        <!-- Filters -->
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-md-4">
-                <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar por título o ID..." @bind="searchTerm" @bind:event="oninput" />
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center" role="button" @onclick="ToggleFilters">
+            <h5 class="mb-0 text-primary"><i class="bi bi-funnel me-2"></i>Filtros y Búsqueda</h5>
+            <i class="bi @(showFilters ? "bi-chevron-up" : "bi-chevron-down")"></i>
+        </div>
+    </div>
+    
+    @if (showFilters)
+    {
+        <div class="card-body bg-light border-bottom">
+            <div class="row g-3">
+                <!-- Search Text -->
+                <div class="col-12 col-md-4">
+                    <label class="form-label small text-muted">Búsqueda</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Título, ID o Descripción..." @bind="searchTerm" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="col-12 col-md-2">
+                    <label class="form-label small text-muted">Estado</label>
+                    <select class="form-select" @bind="statusFilter">
+                        <option value="">Todos</option>
+                        <option value="Pending">Pendiente</option>
+                        <option value="Approved">Aprobado</option>
+                        <option value="Rejected">Rechazado</option>
+                    </select>
+                </div>
+
+                <!-- Requester Filter -->
+                <div class="col-12 col-md-3">
+                    <label class="form-label small text-muted">Solicitante</label>
+                    <select class="form-select" @bind="requesterFilter">
+                        <option value="">Todos los usuarios</option>
+                        @if (users != null)
+                        {
+                            foreach (var user in users)
+                            {
+                                <option value="@user.Id">@user.FullName</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div class="col-12 col-md-3">
+                    <label class="form-label small text-muted">Fecha Creación</label>
+                    <div class="d-flex gap-2">
+                        <input type="date" class="form-control" @bind="dateFrom" />
+                        <input type="date" class="form-control" @bind="dateTo" />
+                    </div>
+                </div>
+
+                <!-- Sort -->
+                <div class="col-12 col-md-3">
+                    <label class="form-label small text-muted">Ordenar por</label>
+                    <select class="form-select" @bind="sortOption">
+                        <option value="date_desc">Fecha (Más reciente)</option>
+                        <option value="date_asc">Fecha (Más antiguo)</option>
+                        <option value="title_asc">Título (A-Z)</option>
+                        <option value="title_desc">Título (Z-A)</option>
+                        <option value="status">Estado</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="col-12 d-flex justify-content-end align-items-end">
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">
+                        <i class="bi bi-x-circle me-1"></i> Limpiar Filtros
+                    </button>
                 </div>
             </div>
-            <div class="col-12 col-md-3">
-                <select class="form-select" @bind="statusFilter">
-                    <option value="">Todos los Estados</option>
-                    <option value="Pending">Pendiente</option>
-                    <option value="Approved">Aprobado</option>
-                    <option value="Rejected">Rechazado</option>
-                </select>
-            </div>
+        </div>
+    }
+
+    <div class="card-body p-0">
+        <!-- Results Count -->
+        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                @if (filteredDocuments != null)
+                {
+                    <strong>@filteredDocuments.Count</strong> <span>documentos encontrados</span>
+                }
+                else
+                {
+                    <span>Cargando...</span>
+                }
+            </span>
         </div>
 
         <!-- Table -->
         <div class="table-responsive table-responsive-stack">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
                     <tr>
                         <th>ID</th>
@@ -66,14 +145,14 @@
                     }
                     else if (!filteredDocuments.Any())
                     {
-                        <tr><td colspan="6" class="text-center py-5 text-muted">No se encontraron documentos.</td></tr>
+                        <tr><td colspan="6" class="text-center py-5 text-muted">No se encontraron documentos con los filtros seleccionados.</td></tr>
                     }
                     else
                     {
                         @foreach (var doc in filteredDocuments)
                         {
                             <tr>
-                                <td data-label="ID">#@doc.Id</td>
+                                <td data-label="ID" class="fw-bold text-muted">#@doc.Id</td>
                                 <td data-label="Título">
                                     <div class="fw-semibold">@doc.Title</div>
                                     <small class="text-muted d-block d-md-none">@doc.Description</small>
@@ -95,15 +174,19 @@
                                         <a href="documents/details/@doc.Id" class="btn btn-sm btn-outline-secondary" title="Ver Detalles">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        @if (doc.Status == "Pending")
-                                        {
-                                            <button class="btn btn-sm btn-outline-success" title="Aprobar" @onclick="() => ApproveDocument(doc.Id)">
-                                                <i class="bi bi-check-lg"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" title="Rechazar" @onclick="() => RejectDocument(doc.Id)">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
-                                        }
+                                        <AuthorizeView Roles="Administrador,Aprobador">
+                                            <Authorized>
+                                                @if (doc.Status == "Pending")
+                                                {
+                                                    <button class="btn btn-sm btn-outline-success" title="Aprobar" @onclick="() => ApproveDocument(doc.Id)">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger" title="Rechazar" @onclick="() => RejectDocument(doc.Id)">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                }
+                                            </Authorized>
+                                        </AuthorizeView>
                                     </div>
                                 </td>
                             </tr>
@@ -116,14 +199,11 @@
         <!-- Pagination (Placeholder) -->
         @if (filteredDocuments != null && filteredDocuments.Any())
         {
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <span class="text-muted small">Mostrando @filteredDocuments.Count registros</span>
+            <div class="d-flex justify-content-center p-3 border-top">
                 <nav aria-label="Page navigation">
                     <ul class="pagination pagination-sm mb-0">
                         <li class="page-item disabled"><a class="page-link" href="#">Anterior</a></li>
                         <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                        <li class="page-item"><a class="page-link" href="#">2</a></li>
-                        <li class="page-item"><a class="page-link" href="#">3</a></li>
                         <li class="page-item"><a class="page-link" href="#">Siguiente</a></li>
                     </ul>
                 </nav>
@@ -134,12 +214,33 @@
 
 @code {
     private List<DocumentRequest>? documents;
+    private List<UserWithRolesViewModel>? users;
+    
+    // Filters
+    private bool showFilters = true;
     private string searchTerm = "";
     private string statusFilter = "";
+    private string requesterFilter = "";
+    private DateTime? dateFrom;
+    private DateTime? dateTo;
+    private string sortOption = "date_desc";
 
     protected override async Task OnInitializedAsync()
     {
         documents = await DocumentService.GetDocumentsAsync();
+        users = await UserManagementService.GetAllUsersWithRolesAsync();
+    }
+
+    private void ToggleFilters() => showFilters = !showFilters;
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        requesterFilter = "";
+        dateFrom = null;
+        dateTo = null;
+        sortOption = "date_desc";
     }
 
     private List<DocumentRequest>? filteredDocuments
@@ -150,17 +251,48 @@
 
             var query = documents.AsEnumerable();
 
+            // Text Search
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 query = query.Where(d => 
-                    d.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || 
+                    (d.Title?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) || 
+                    (d.Description?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                     d.Id.ToString().Contains(searchTerm));
             }
 
+            // Status Filter
             if (!string.IsNullOrWhiteSpace(statusFilter))
             {
                 query = query.Where(d => d.Status == statusFilter);
             }
+
+            // Requester Filter
+            if (!string.IsNullOrWhiteSpace(requesterFilter))
+            {
+                query = query.Where(d => d.RequestedByUserId == requesterFilter);
+            }
+
+            // Date Range Filter
+            if (dateFrom.HasValue)
+            {
+                query = query.Where(d => d.CreatedDate.Date >= dateFrom.Value.Date);
+            }
+
+            if (dateTo.HasValue)
+            {
+                query = query.Where(d => d.CreatedDate.Date <= dateTo.Value.Date);
+            }
+
+            // Sorting
+            query = sortOption switch
+            {
+                "date_asc" => query.OrderBy(d => d.CreatedDate),
+                "date_desc" => query.OrderByDescending(d => d.CreatedDate),
+                "title_asc" => query.OrderBy(d => d.Title),
+                "title_desc" => query.OrderByDescending(d => d.Title),
+                "status" => query.OrderBy(d => d.Status),
+                _ => query.OrderByDescending(d => d.CreatedDate)
+            };
 
             return query.ToList();
         }

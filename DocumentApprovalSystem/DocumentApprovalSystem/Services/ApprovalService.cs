@@ -10,18 +10,24 @@ namespace DocumentApprovalSystem.Services
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IEmailNotificationService _emailService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<ApprovalService> _logger;
+        private readonly IAuditService _auditService;
 
         public ApprovalService(
             ApplicationDbContext context, 
             UserManager<User> userManager,
             IEmailNotificationService emailService,
-            ILogger<ApprovalService> logger)
+            INotificationService notificationService,
+            ILogger<ApprovalService> logger,
+            IAuditService auditService)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
+            _notificationService = notificationService;
             _logger = logger;
+            _auditService = auditService;
         }
 
         public async Task<ApprovalConfig> GetConfigAsync()
@@ -67,6 +73,11 @@ namespace DocumentApprovalSystem.Services
             }
 
             await _context.SaveChangesAsync();
+            
+            // Log audit
+            await _auditService.LogActionAsync(requestId, userId, "Voted", "127.0.0.1", 
+                $"Vote: {decision}, Comment: {comments}");
+            
             await CheckApprovalStatusAsync(requestId);
         }
 
@@ -152,6 +163,18 @@ namespace DocumentApprovalSystem.Services
 
             await _context.SaveChangesAsync();
 
+            // Log audit for status change
+            if (isApproved)
+            {
+                await _auditService.LogActionAsync(requestId, "System", "Approved", "127.0.0.1", 
+                    $"Document approved with {approveVotes}/{totalApprovers} votes");
+            }
+            else if (isRejected)
+            {
+                await _auditService.LogActionAsync(requestId, "System", "Rejected", "127.0.0.1", 
+                    $"Document rejected with {rejectVotes}/{totalApprovers} reject votes");
+            }
+
             // Send email notification to requester if status changed
             if (isApproved || isRejected)
             {
@@ -161,9 +184,24 @@ namespace DocumentApprovalSystem.Services
                     var requester = await _context.Users.FindAsync(request.RequestedByUserId);
                     if (requester != null)
                     {
+                        // Email Notification
                         _logger.LogInformation($"Sending email to {requester.Email}");
                         await _emailService.SendApprovalStatusNotificationAsync(request, requester);
                         _logger.LogInformation("Email sent successfully");
+
+                        // In-App Notification
+                        string title = isApproved ? "Documento Aprobado" : "Documento Rechazado";
+                        string type = isApproved ? "Success" : "Error";
+                        string statusLabel = isApproved ? "aprobado" : "rechazado";
+                        string message = $"Su documento '{request.Title}' ha sido {statusLabel}.";
+                        
+                        await _notificationService.CreateNotificationAsync(
+                            requester.Id,
+                            title,
+                            message,
+                            $"documents/details/{request.Id}",
+                            type
+                        );
                     }
                     else
                     {
@@ -172,7 +210,7 @@ namespace DocumentApprovalSystem.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Failed to send email notification for request {requestId}");
+                    _logger.LogError(ex, $"Failed to send notifications for request {requestId}");
                 }
             }
 

@@ -1,5 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@using DocumentApprovalSystem.Services
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject INotificationService NotificationService
+@inject NavigationManager NavigationManager
 
 <div class="sidebar">
     <div class="sidebar-header">
@@ -33,15 +36,41 @@
         <AuthorizeView>
             <Authorized>
                 <li class="nav-item">
+                    <NavLink class="nav-link" href="notifications">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <span><i class="bi bi-bell"></i> Notificaciones</span>
+                            @if (unreadCount > 0)
+                            {
+                                <span class="badge bg-danger rounded-pill">@unreadCount</span>
+                            }
+                        </div>
+                    </NavLink>
+                </li>
+
+                <li class="nav-item">
                     <NavLink class="nav-link" href="documents">
                         <i class="bi bi-folder2-open"></i> Expedientes
                     </NavLink>
                 </li>
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="documents/upload">
-                        <i class="bi bi-cloud-upload"></i> Nuevo Documento
-                    </NavLink>
-                </li>
+                <AuthorizeView Roles="Administrador,Solicitante,Aprobador" Context="innerContext">
+                    <Authorized>
+                        <li class="nav-item">
+                            <NavLink class="nav-link" href="documents/upload">
+                                <i class="bi bi-cloud-upload"></i> Nuevo Documento
+                            </NavLink>
+                        </li>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Administrador,Auditor" Context="auditContext">
+                    <Authorized>
+                        <li class="nav-item">
+                            <NavLink class="nav-link" href="audit-logs">
+                                <i class="bi bi-journal-text"></i> Auditoría
+                            </NavLink>
+                        </li>
+                    </Authorized>
+                </AuthorizeView>
             </Authorized>
         </AuthorizeView>
 
@@ -88,6 +117,43 @@
 <div class="sidebar-overlay" onclick="closeSidebar()"></div>
 
 @code {
+    private int unreadCount = 0;
+    private System.Threading.Timer? timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpdateUnreadCount();
+        // Poll for notifications every 30 seconds
+        timer = new System.Threading.Timer(async _ => 
+        {
+            await InvokeAsync(async () => 
+            {
+                await UpdateUnreadCount();
+                StateHasChanged();
+            });
+        }, null, 30000, 30000);
+    }
+
+    private async Task UpdateUnreadCount()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            var userIdClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                unreadCount = await NotificationService.GetUnreadCountAsync(userIdClaim.Value);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
     private string GetUserInitial(string? userName)
     {
         if (string.IsNullOrEmpty(userName)) return "?";
@@ -97,7 +163,6 @@
     private string GetUserName(string? userName)
     {
         if (string.IsNullOrEmpty(userName)) return "Usuario";
-        // Extract name before @ if it's an email
         var atIndex = userName.IndexOf('@');
         return atIndex > 0 ? userName.Substring(0, atIndex) : userName;
     }
@@ -107,6 +172,7 @@
         if (user.IsInRole("Administrador")) return "Administrador";
         if (user.IsInRole("Solicitante")) return "Solicitante";
         if (user.IsInRole("Aprobador")) return "Aprobador";
+        if (user.IsInRole("Auditor")) return "Auditor";
         return "Usuario";
     }
 }

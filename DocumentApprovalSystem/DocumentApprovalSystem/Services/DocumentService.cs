@@ -13,24 +13,34 @@ public class DocumentService : IDocumentService
     private const long MaxFileSize = 100 * 1024 * 1024; // 100 MB
     private readonly ILogger<DocumentService> _logger;
     private readonly IEmailNotificationService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly UserManager<User> _userManager;
     private readonly IFileValidationService _fileValidationService;
+    private readonly IAuditService _auditService;
 
     public DocumentService(
         ApplicationDbContext context, 
         IWebHostEnvironment environment, 
         ILogger<DocumentService> logger,
         IEmailNotificationService emailService,
+        INotificationService notificationService,
         UserManager<User> userManager,
-        IFileValidationService fileValidationService)
+        IFileValidationService fileValidationService,
+        IAuditService auditService)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
         _emailService = emailService;
+        _notificationService = notificationService;
         _userManager = userManager;
         _fileValidationService = fileValidationService;
+        _auditService = auditService;
     }
+
+    // ... (existing methods)
+
+
 
     public async Task<List<DocumentRequest>> GetAllAsync()
     {
@@ -109,6 +119,10 @@ public class DocumentService : IDocumentService
             };
             _context.DocumentHistories.Add(history);
             await _context.SaveChangesAsync();
+
+            // Log audit
+            await _auditService.LogActionAsync(request.Id, request.RequestedByUserId, "Created", "127.0.0.1", 
+                $"Document '{request.Title}' created");
 
             // Send email notification to approvers
             try
@@ -209,17 +223,31 @@ public class DocumentService : IDocumentService
         await _context.SaveChangesAsync();
 
         // Send email notification to approvers
+        // Send email notification to approvers
         try
         {
             var approvers = await _userManager.GetUsersInRoleAsync("Aprobador");
             if (approvers.Any())
             {
+                // Email notification
                 await _emailService.SendNewDocumentNotificationAsync(request, approvers.ToList());
+
+                // In-App Notification
+                foreach (var approver in approvers)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        approver.Id,
+                        "Nuevo Documento Pendiente",
+                        $"El usuario {request.RequestedByUser?.FullName ?? "Desconocido"} ha solicitado aprobación para: {request.Title}",
+                        $"documents/details/{request.Id}",
+                        "Info"
+                    );
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email notifications");
+            _logger.LogError(ex, "Failed to send notifications");
         }
 
         return request;
