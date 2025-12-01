@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using DocumentApprovalSystem.Services
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject INotificationService NotificationService
+@inject IServiceScopeFactory ServiceScopeFactory
 @inject NavigationManager NavigationManager
 
 <div class="sidebar">
@@ -136,16 +136,27 @@
 
     private async Task UpdateUnreadCount()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated ?? false)
+        try
         {
-            var userIdClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            if (userIdClaim != null)
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated ?? false)
             {
-                unreadCount = await NotificationService.GetUnreadCountAsync(userIdClaim.Value);
+                var userIdClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                if (userIdClaim != null)
+                {
+                    // Use IServiceScopeFactory to avoid DbContext concurrency issues
+                    using var scope = ServiceScopeFactory.CreateScope();
+                    var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+                    unreadCount = await notificationService.GetUnreadCountAsync(userIdClaim.Value);
+                }
             }
+        }
+        catch (Exception)
+        {
+            // Silently handle errors to avoid breaking the UI
+            // The count will be updated on the next timer tick
         }
     }
 

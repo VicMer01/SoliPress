@@ -1,10 +1,17 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 
 <div class="app-container">
-    <NavMenu />
+    @if (!IsAuthPage())
+    {
+        <NavMenu />
+    }
 
-    <div class="main-content">
-        <NavBar />
+    <div class="main-content @(IsAuthPage() ? "auth-page" : "")">
+        @if (!IsAuthPage())
+        {
+            <NavBar />
+        }
         
         <div class="content-wrapper">
             @Body
@@ -17,3 +24,14 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private bool IsAuthPage()
+    {
+        var uri = NavigationManager.Uri;
+        return uri.Contains("/Account/Login") || 
+               uri.Contains("/Account/Register") || 
+               uri.Contains("/Account/ForgotPassword") ||
+               uri.Contains("/Account/ResetPassword");
+    }
+}
