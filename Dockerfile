@@ -3,11 +3,12 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore "Proyectos con ia/DocumentApprovalSystem.sln"
-RUN dotnet publish "Proyectos con ia/DocumentApprovalSystem/DocumentApprovalSystem.csproj" -c Release -o /app
+RUN dotnet restore "PROYECTOS/DocumentApprovalSystem.sln"
+RUN dotnet publish "PROYECTOS/DocumentApprovalSystem/DocumentApprovalSystem.csproj" -c Release -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
 
+EXPOSE 80
 ENTRYPOINT ["dotnet", "DocumentApprovalSystem.dll"]
