@@ -26,12 +26,19 @@
 </div>
 
 @code {
-    private bool IsAuthPage()
-    {
-        var uri = NavigationManager.Uri;
-        return uri.Contains("/Account/Login") || 
-               uri.Contains("/Account/Register") || 
-               uri.Contains("/Account/ForgotPassword") ||
-               uri.Contains("/Account/ResetPassword");
-    }
+   private readonly string[] AuthRoutes =
+{
+    "account/login",
+    "account/register",
+    "account/forgotpassword",
+    "account/resetpassword"
+};
+
+private bool IsAuthPage()
+{
+    var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri).ToLower();
+    return AuthRoutes.Any(route => path.StartsWith(route));
+}
+
+
 }

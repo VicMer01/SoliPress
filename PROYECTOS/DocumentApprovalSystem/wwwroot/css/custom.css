@@ -469,3 +469,8 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+/* Auth Page Layout Fix */
+.main-content.auth-page {
+    margin-left: 0;
+}

@@ -73,10 +73,13 @@ h1:focus {
     width: 100% !important;
 }
 
-.main-content.auth-page .content-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 2rem;
+/* Fix para que las páginas de autenticación no se centren ni colapsen */
+.auth-page .content-wrapper {
+    display: block !important;
+    justify-content: unset !important;
+    align-items: unset !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 1rem !important;
 }

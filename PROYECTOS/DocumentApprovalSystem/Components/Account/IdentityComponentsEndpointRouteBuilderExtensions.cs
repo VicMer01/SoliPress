@@ -26,10 +26,10 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             HttpContext context,
             [FromServices] SignInManager<User> signInManager,
             [FromForm] string provider,
-            [FromForm] string returnUrl) =>
+            [FromForm] string? returnUrl) =>
         {
             IEnumerable<KeyValuePair<string, StringValues>> query = [
-                new("ReturnUrl", returnUrl),
+                new("ReturnUrl", returnUrl ?? "/"),
                 new("Action", ExternalLogin.LoginCallbackAction)];
 
             var redirectUrl = UriHelper.BuildRelative(
@@ -44,10 +44,10 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
         accountGroup.MapPost("/Logout", async (
             ClaimsPrincipal user,
             [FromServices] SignInManager<User> signInManager,
-            [FromForm] string returnUrl) =>
+            [FromForm] string? returnUrl) =>
         {
             await signInManager.SignOutAsync();
-            return TypedResults.LocalRedirect($"~/{returnUrl}");
+            return TypedResults.LocalRedirect($"~/{returnUrl ?? ""}");
         });
 
         var manageGroup = accountGroup.MapGroup("/Manage").RequireAuthorization();
